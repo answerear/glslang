@@ -3,11 +3,10 @@ setlocal EnableDelayedExpansion
 
 pushd "%~dp0"
 
-set "SCRIPT_DIR=%~dp0"
-if "%SCRIPT_DIR:~-1%"=="\" set "SCRIPT_DIR=%SCRIPT_DIR:~0,-1%"
-set "BUILD_DIR=%SCRIPT_DIR%\build_vs2019_x64"
+set "SOURCE_DIR=."
+set "BUILD_DIR=build_vs2019_x64"
 set "STAGE_DIR=%BUILD_DIR%\install"
-for %%I in ("%SCRIPT_DIR%\..\..\Tiny3D\dependencies\glslang") do set "TARGET_DIR=%%~fI"
+set "TARGET_DIR=..\..\Tiny3D\dependencies\glslang"
 
 set "TARGET_INC_DIR=%TARGET_DIR%\include"
 set "TARGET_LIB_DEBUG_DIR=%TARGET_DIR%\prebuilt\Windows\x64\Debug"
@@ -39,17 +38,17 @@ if errorlevel 1 (
 )
 
 echo Fetching/updating external dependencies via update_glslang_sources.py...
-python "%SCRIPT_DIR%\update_glslang_sources.py"
+python "update_glslang_sources.py"
 if errorlevel 1 (
     echo [ERROR] Failed to prepare external dependencies via update_glslang_sources.py!
     goto :error
 )
 
-if not exist "%SCRIPT_DIR%\External\spirv-tools\CMakeLists.txt" (
+if not exist "External\spirv-tools\CMakeLists.txt" (
     echo [ERROR] External\spirv-tools\CMakeLists.txt not found after running update_glslang_sources.py!
     goto :error
 )
-if not exist "%SCRIPT_DIR%\External\spirv-tools\external\spirv-headers\CMakeLists.txt" (
+if not exist "External\spirv-tools\external\spirv-headers\CMakeLists.txt" (
     echo [ERROR] External\spirv-tools\external\spirv-headers\CMakeLists.txt not found!
     goto :error
 )
@@ -73,7 +72,7 @@ echo.
 echo ============================================================================
 echo [3/6] Configuring glslang with CMake (Visual Studio 16 2019, x64)...
 echo ============================================================================
-cmake -S "%SCRIPT_DIR%" -B "%BUILD_DIR%" ^
+cmake -S "%SOURCE_DIR%" -B "%BUILD_DIR%" ^
     -G "Visual Studio 16 2019" ^
     -A x64 ^
     -DBUILD_SHARED_LIBS=OFF ^
@@ -84,7 +83,7 @@ cmake -S "%SCRIPT_DIR%" -B "%BUILD_DIR%" ^
     -DGLSLANG_TESTS=OFF ^
     -DENABLE_GLSLANG_BINARIES=OFF ^
     -DGLSLANG_ENABLE_INSTALL=ON ^
-    -DCMAKE_INSTALL_PREFIX="%STAGE_DIR%"
+    -DCMAKE_INSTALL_PREFIX="%CD%\%STAGE_DIR%"
 if errorlevel 1 (
     echo [ERROR] CMake configure failed!
     goto :error
@@ -145,31 +144,31 @@ for %%L in (%GLSLANG_LIBS%) do (
 )
 
 :: 2. Copy top-level glslang headers (build_info.h + glsl_intrinsic_header.h)
-copy /Y "%BUILD_DIR%\include\glslang\build_info.h"   "%TARGET_INC_DIR%\glslang\build_info.h" >nul
+copy /Y "%BUILD_DIR%\include\glslang\build_info.h" "%TARGET_INC_DIR%\glslang\build_info.h" >nul
 if errorlevel 1 goto :copy_header_error
 
-copy /Y "%SCRIPT_DIR%\glslang\glsl_intrinsic_header.h" "%TARGET_INC_DIR%\glslang\glsl_intrinsic_header.h" >nul
+copy /Y "glslang\glsl_intrinsic_header.h" "%TARGET_INC_DIR%\glslang\glsl_intrinsic_header.h" >nul
 if errorlevel 1 goto :copy_header_error
 
 :: 3. Copy glslang/Public/*.h
-xcopy /Y /Q "%SCRIPT_DIR%\glslang\Public\*.h" "%TARGET_INC_DIR%\glslang\Public\" >nul
+xcopy /Y /Q "glslang\Public\*.h" "%TARGET_INC_DIR%\glslang\Public\" >nul
 if errorlevel 1 goto :copy_header_error
 
 :: 4. Copy glslang/Include/*.h
-xcopy /Y /Q "%SCRIPT_DIR%\glslang\Include\*.h" "%TARGET_INC_DIR%\glslang\Include\" >nul
+xcopy /Y /Q "glslang\Include\*.h" "%TARGET_INC_DIR%\glslang\Include\" >nul
 if errorlevel 1 goto :copy_header_error
 
 :: 5. Copy glslang/MachineIndependent headers (matching existing dependencies/glslang structure)
 for %%H in (%MI_HEADERS%) do (
-    copy /Y "%SCRIPT_DIR%\glslang\MachineIndependent\%%H" "%TARGET_INC_DIR%\glslang\MachineIndependent\%%H" >nul
+    copy /Y "glslang\MachineIndependent\%%H" "%TARGET_INC_DIR%\glslang\MachineIndependent\%%H" >nul
     if errorlevel 1 goto :copy_header_error
 )
 
 :: 6. Copy SPIRV/*.h and SPIRV/*.hpp11 to include/SPIRV/
-xcopy /Y /Q "%SCRIPT_DIR%\SPIRV\*.h"     "%TARGET_INC_DIR%\SPIRV\" >nul
+xcopy /Y /Q "SPIRV\*.h"     "%TARGET_INC_DIR%\SPIRV\" >nul
 if errorlevel 1 goto :copy_header_error
 
-xcopy /Y /Q "%SCRIPT_DIR%\SPIRV\*.hpp11" "%TARGET_INC_DIR%\SPIRV\" >nul
+xcopy /Y /Q "SPIRV\*.hpp11" "%TARGET_INC_DIR%\SPIRV\" >nul
 if errorlevel 1 goto :copy_header_error
 
 echo.
