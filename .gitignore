@@ -25,3 +25,4 @@ tools/
 # Random OS stuff
 .DS_Store
 ._*
+build_vs2019_x64
