@@ -113,12 +113,35 @@ echo.
 echo ============================================================================
 echo [6/6] Synchronizing headers and libraries to "%TARGET_DIR%"...
 echo ============================================================================
-if not exist "%TARGET_INC_DIR%\glslang\Include"            mkdir "%TARGET_INC_DIR%\glslang\Include"
-if not exist "%TARGET_INC_DIR%\glslang\MachineIndependent" mkdir "%TARGET_INC_DIR%\glslang\MachineIndependent"
-if not exist "%TARGET_INC_DIR%\glslang\Public"             mkdir "%TARGET_INC_DIR%\glslang\Public"
-if not exist "%TARGET_INC_DIR%\SPIRV"                      mkdir "%TARGET_INC_DIR%\SPIRV"
-if not exist "%TARGET_LIB_DEBUG_DIR%"                      mkdir "%TARGET_LIB_DEBUG_DIR%"
-if not exist "%TARGET_LIB_RELEASE_DIR%"                    mkdir "%TARGET_LIB_RELEASE_DIR%"
+echo Cleaning existing files in target directories...
+if exist "%TARGET_INC_DIR%" (
+    rmdir /S /Q "%TARGET_INC_DIR%"
+    if exist "%TARGET_INC_DIR%" (
+        echo [ERROR] Failed to clean "%TARGET_INC_DIR%". Please close any open files/IDE and retry.
+        goto :error
+    )
+)
+if exist "%TARGET_LIB_DEBUG_DIR%" (
+    rmdir /S /Q "%TARGET_LIB_DEBUG_DIR%"
+    if exist "%TARGET_LIB_DEBUG_DIR%" (
+        echo [ERROR] Failed to clean "%TARGET_LIB_DEBUG_DIR%". Please close any open files/IDE and retry.
+        goto :error
+    )
+)
+if exist "%TARGET_LIB_RELEASE_DIR%" (
+    rmdir /S /Q "%TARGET_LIB_RELEASE_DIR%"
+    if exist "%TARGET_LIB_RELEASE_DIR%" (
+        echo [ERROR] Failed to clean "%TARGET_LIB_RELEASE_DIR%". Please close any open files/IDE and retry.
+        goto :error
+    )
+)
+
+mkdir "%TARGET_INC_DIR%\glslang\Include"
+mkdir "%TARGET_INC_DIR%\glslang\MachineIndependent"
+mkdir "%TARGET_INC_DIR%\glslang\Public"
+mkdir "%TARGET_INC_DIR%\SPIRV"
+mkdir "%TARGET_LIB_DEBUG_DIR%"
+mkdir "%TARGET_LIB_RELEASE_DIR%"
 
 :: 1. Copy Debug & Release static libraries (8 libs each)
 for %%L in (%GLSLANG_LIBS%) do (
@@ -147,7 +170,10 @@ for %%L in (%GLSLANG_LIBS%) do (
 copy /Y "%BUILD_DIR%\include\glslang\build_info.h" "%TARGET_INC_DIR%\glslang\build_info.h" >nul
 if errorlevel 1 goto :copy_header_error
 
-copy /Y "glslang\glsl_intrinsic_header.h" "%TARGET_INC_DIR%\glslang\glsl_intrinsic_header.h" >nul
+python "gen_extension_headers.py" -i "glslang\ExtensionHeaders" -o "%BUILD_DIR%\include\glslang\glsl_intrinsic_header.h"
+if errorlevel 1 goto :copy_header_error
+
+copy /Y "%BUILD_DIR%\include\glslang\glsl_intrinsic_header.h" "%TARGET_INC_DIR%\glslang\glsl_intrinsic_header.h" >nul
 if errorlevel 1 goto :copy_header_error
 
 :: 3. Copy glslang/Public/*.h
